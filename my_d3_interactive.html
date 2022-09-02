@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Interactive Line Chart</title>
+        <!-- <script type="text/javascript" src="d3.js"></script> -->
+        <script type="text/javascript" src="https://d3js.org/d3.v7.min.js"></script>
+    </head>
+    <body>
+        <p> Select a Bay Area County for Unemployment Data</p>
+        <select id="selectButton"></select>
+        <div id="interactive"></div>
+        <script type="text/javascript">
+
+            var w = 1100;
+			var h = 400;
+			var padding = 40;
+			var leftPadding = 220;
+			
+			var dataset, xScale, yScale, xAxis, yAxis, line;
+
+
+            d3.json("bls_monthly_unemp.json")
+                .then(function(data){
+
+                    let caliCounties = data.filter((element) => {
+                        if (element.state === 'CA') {
+                            return element;
+                        }
+                    });
+
+                    const allGroup = ["Santa Clara County", "San Mateo County", "Sonoma County", 
+                                    "Napa County", "Marin County", "Solano County", "San Francisco County/city", "Contra Costa County", "Alameda County", "Santa Cruz County"]
+
+                    d3.select("#selectButton")
+                        .selectAll('myOptions')
+                            .data(allGroup)
+                        .enter()
+                            .append('option')
+                        .text(function (d) { return d; }) // text showed in the menu
+                        .attr("value", function (d) { return d; })
+
+                    let bayCounties = caliCounties.filter((element) => {
+                        if (allGroup.includes(element.county)) {
+                            return element;
+                        }
+                    });
+
+                    const singleCounty = ["Santa Clara County"]
+
+                    let firstCountyData = bayCounties.filter((element) => {
+                        if (singleCounty.includes(element.county)) {
+                            return element;
+                        }
+                    });
+
+                    var parseDate = d3.timeParse("%Y-%m-%d");
+                    
+                    function update(selectedGroup) {
+                        d3.selectAll('svg').remove();
+                        var selectedCounty = [selectedGroup]
+
+                        let userCountyData = bayCounties.filter((element) => {
+                            if (selectedCounty.includes(element.county)) {
+                                return element;
+                            }
+                        });
+
+                        var dataset = userCountyData;
+                        var parseDate = d3.timeParse("%Y-%m-%d");
+
+                        xScale = d3.scaleTime()
+                            .domain([
+                                d3.min(dataset, function(d) {
+                                    return parseDate(d.date); }),
+                                d3.max(dataset, function(d) { 
+                                    return parseDate(d.date); })
+                            ])
+                            .range([padding, w]); 
+
+                        yScale = d3.scaleLinear()
+                                        .domain([0, d3.max(dataset, function(d) { 
+                                            return d.unemployed_rate; }) +1])
+                                        .range([h - padding, (padding/2)]);
+
+                        xAxis = d3.axisBottom()
+                                .scale(xScale)
+                                .ticks(10)
+
+                        yAxis = d3.axisLeft()
+                                .scale(yScale)
+                                .ticks(10);
+
+                        line = d3.line()
+                                .x(function(d) { return xScale(parseDate(d.date)); })
+                                .y(function(d) { return yScale(d.unemployed_rate); })
+
+                        //Create SVG element
+                        var svg = d3.select("body")
+                                    .append("svg")
+                                    .attr("width", w)
+                                    .attr("height", h);
+
+                        svg.append("path")
+                            .datum(dataset)
+                            .attr("class", "line")
+                            .attr("fill", "none")
+                            .attr("stroke", "#377eb8")
+                            .attr("d", line)
+                                
+                        //Create axes
+                        svg.append("g")
+                            .attr("class", "axis")
+                            .attr("transform", "translate(0," + (h - padding) + ")")
+                            .call(xAxis);
+
+                        svg.append("g")
+                            .attr("class", "axis")
+                            .attr("transform", "translate(" + padding + ",0)")
+                            .call(yAxis);
+
+                        svg.append("text")
+                            .attr("transform", "translate(" + (w/2) + " ," + (h) + ")")
+                            .style("text-anchor", "middle")
+                            .text("Date");
+
+                        svg.append("text")
+                            .attr("transform", "rotate(-90)")
+                            .attr("x", -(h/2))
+                            .attr("y", 15)
+                            .style("text-anchor", "middle")
+                            .text("Population");
+
+                        svg.append("text")
+                            .attr("x", w/2)
+                            .attr("y", padding)
+                            .attr("text-anchor", "middle")
+                            .style("font-size", "16px")
+                            .text(`Unemployment Rates in ${selectedGroup}, California`);
+
+
+                    }
+
+                    d3.select("#selectButton").on("change", function(d) {
+                        // recover the option that has been chosen
+                        var selectedOption = d3.select(this).property("value")
+                        // run the updateChart function with this selected option
+                        update(selectedOption)
+                })
+      
+                                
+                
+              });
+
+            
+
+      
+            
+        </script>
+    </body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>D3 Multi-Line Chart</title>
+        <script type="text/javascript" src="https://d3js.org/d3.v7.min.js"></script>
+    </head>
+    <body>
+        <p> d3 chart <br>
+			<a href="/my_d3_interactive.html">Try the interactive!</a> 
+		</p>
+		<script type="text/javascript">
+
+            var w = 1100;
+			var h = 400;
+			var padding = 40;
+			var leftPadding = 220;
+			
+			var dataset, xScale, yScale, xAxis, yAxis, line;
+          
+            var parseDate = d3.timeParse("%Y-%m-%d");
+
+            d3.json("bls_monthly_unemp.json")
+              .then(function(data){ 
+
+				let caliCounties = data.filter((element) => {
+					if (element.state === 'CA') {
+						return element;
+					}
+				});
+
+				var bayList = ["Santa Clara County", "San Mateo County", "Sonoma County", 
+								"Napa County", "Marin County", "Solano County", "San Francisco County/city", "Contra Costa County", "Alameda County", "Santa Cruz County"]
+
+				let bayCounties = caliCounties.filter((element) => {
+					if (bayList.includes(element.county)) {
+						return element;
+					}
+
+				});
+
+                var dataset = bayCounties;
+
+                xScale = d3.scaleTime()
+							   .domain([
+									d3.min(dataset, function(d) {
+                                        return parseDate(d.date); }),
+									d3.max(dataset, function(d) { 
+                                        return parseDate(d.date); })
+								])
+							   .range([padding, w - leftPadding]); 
+							   // added -30 so there's room for legend
+
+                yScale = d3.scaleLinear()
+                                .domain([0, d3.max(dataset, function(d) { 
+                                    return d.unemployed_rate; }) +1])
+                                .range([h - padding, (padding/2)]);
+
+				xAxis = d3.axisBottom()
+						   .scale(xScale)
+						   .ticks(10)
+                        //    .tickFormat(parseDate);
+
+				yAxis = d3.axisLeft()
+						   .scale(yScale)
+						   .ticks(10);
+
+				const color = d3.scaleOrdinal()
+							.range(['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#4C4B4B','#a65628','#f781bf','#999999', '#d4af00'])
+
+
+				var counties = d3.group(bayCounties, d => d.county)
+
+
+                //Define line generator
+				line = d3.line()
+							.x(function(d) { return xScale(parseDate(d.date)); })
+							.y(function(d) { return yScale(d.unemployed_rate); });
+				
+
+                //Create SVG element
+				var svg = d3.select("body")
+							.append("svg")
+							.attr("width", w)
+							.attr("height", h);
+
+
+				// Multiple lines on my chart, woooo!
+				svg.selectAll("path")
+					.data(counties)
+					.enter()
+					.append("path")
+					.attr("fill", "none")
+					.attr("stroke", function(d){ return color(d[0]) })
+					.attr("class", "line")
+					.attr("d", function(d){
+						// console.log(d)
+							return d3.line() // the other paths are appended // just not in the body
+								.x(function(d) { return xScale(parseDate(d.date)); })
+								.y(function(d) { return yScale(d.unemployed_rate); })
+								(d[1])
+							})
+
+				//Create axes
+				svg.append("g")
+					.attr("class", "axis")
+					.attr("transform", "translate(0," + (h - padding) + ")")
+					.call(xAxis);
+
+				svg.append("g")
+					.attr("class", "axis")
+					.attr("transform", "translate(" + padding + ",0)")
+					.call(yAxis);
+
+				svg.append("text")
+					.attr("transform", "translate(" + (w/2) + " ," + (h) + ")")
+					.style("text-anchor", "middle")
+					.text("Date");
+
+				svg.append("text")
+					.attr("transform", "rotate(-90)")
+					.attr("x", -(h/2))
+					.attr("y", 15)
+					.style("text-anchor", "middle")
+					.text("Population");
+
+				svg.append("text")
+					.attr("x", w/2)
+					.attr("y", padding)
+					.attr("text-anchor", "middle")
+					.style("font-size", "16px")
+					.text("Unemployment in California by County");
+
+				var size = 20
+				var legendWidth = 20;
+				var legendHeight = 20;
+				svg.selectAll("mydots")
+					.data(bayList)
+					.enter()
+					.append("rect")
+						.attr("x", 900)
+						.attr("y", function(d,i){ return 100 + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+						.attr("width", legendWidth)
+						.attr("height", legendHeight)
+						.style("fill", function(d){ return color(d)})
+
+				svg.selectAll("mylabels")
+					.data(bayList)
+					.enter()
+					.append("text")
+						.attr("x", 900 + size*1.2)
+						.attr("y", function(d,i){ return 100 + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
+						.style("fill", function(d){ return color(d)})
+						.text(function(d){ return d})
+						.attr("text-anchor", "left")
+						.style("alignment-baseline", "middle")
+
+                console.log(data)
+            });
+
+
+            
+        </script>
+    </body>
+</html>
